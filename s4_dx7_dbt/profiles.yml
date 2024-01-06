@@ -1,0 +1,10 @@
+s4_dx7_dbt:
+  outputs:
+    dev:
+      type: duckdb
+      path: dev.duckdb
+      threads: 1
+      attach:
+        - path: audio.db
+          type: sqlite
+  target: dev

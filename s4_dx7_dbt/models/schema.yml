@@ -1,0 +1,8 @@
+version: 2
+
+models:
+- name: render_midis
+  config:
+    materialized: table
+    partition_n: "{{ var('partition_n', 0) }}"
+    alias: render_midis_{{ var('partition_n', 0) }}

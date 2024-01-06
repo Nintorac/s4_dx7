@@ -1,0 +1,15 @@
+version: 2
+
+
+sources:
+  - name: midi
+    tables:
+      - name: detailed_notes
+        meta:
+          external_location: |
+            read_parquet(
+              [
+              'https://huggingface.co/datasets/nintorac/midi_etl/resolve/main/lakh/detailed_notes/p=f/data_0.parquet',
+              'https://huggingface.co/datasets/nintorac/midi_etl/resolve/main/lakh/detailed_notes/p=e/data_0.parquet'
+              ]
+            )

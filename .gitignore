@@ -1,0 +1,23 @@
+__pycache__
+
+#dbt
+target/
+dbt_packages/
+logs/
+.user.yml
+
+#dagster
+dghome/*
+!dghome/dagster.yaml
+
+# data + instruments
+instruments/*
+data/*
+
+
+!.gitkeep
+
+*.db
+*.duckdb
+*.wal
+*.db-journal
