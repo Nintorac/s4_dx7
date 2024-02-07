@@ -1,0 +1,47 @@
+# @package _global_
+defaults:
+  - /trainer: default
+  - /loader: default
+  - /dataset: dx7
+  - /task: multiclass_classification
+  - /optimizer: adamw
+  - /scheduler: plateau
+  - /model: sashimi
+
+model:
+  n_layers: 8
+  dropout: 0.0
+  layer:
+    n_ssm: 1
+
+train:
+  monitor: val/loss
+  mode: min
+
+task:
+  metrics:
+    - bpb
+    - accuracy
+    - accuracy@3
+    - accuracy@5
+    - accuracy@10
+
+encoder: embedding
+
+decoder:
+  _name_: sequence
+  mode: last
+
+loader:
+  batch_size: 14
+
+trainer:
+  max_epochs: 1000
+  limit_train_batches: 1000
+  limit_val_batches: 100
+  accumulate_grad_batches: 2
+
+dataset:
+  sr: 8000
+  duration: 2.5
+  bit_rate: 8

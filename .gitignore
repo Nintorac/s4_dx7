@@ -21,3 +21,13 @@ data/*
 *.duckdb
 *.wal
 *.db-journal
+
+
+s4/configs/experiment
+carts/
+*.syx
+
+!/s4/configs/experiment
+*.pdf
+
+experiments/

@@ -33,8 +33,13 @@ clean-targets:         # directories to be removed by `dbt clean`
 models:
   s4_dx7_dbt:
     +materialized: table
-    +database: audio
-
-    render_midis:
-      +materialized: incremental
+    # +database: audio
+    phrase_stats_sub:
+      +materialized: ephemeral
+    melodies:
+    #   +materialized:`` incremental
+      +database: audio
+    dx7_voices:
+      +database: audio
+    dx7_cartridges:
       +database: audio

@@ -1,0 +1,15 @@
+select 
+	concat(track_id, bucket::varchar) phrase_id
+	, bucket
+	, track_id
+	, to_json(list({
+			'start_time': e.start_time-floor(e.start_time/4)*4,
+			'note': e.note,
+			'duration': e.duration,
+			'velocity': e.velocity
+		})) notes
+	, ntile({{ var('n_partitions', 100 )}}) over () as p
+	, count(*) as total
+from {{ ref("4_beat_phrases") }}
+group by bucket, track_id
+order by p

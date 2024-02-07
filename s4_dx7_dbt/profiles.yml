@@ -2,9 +2,13 @@ s4_dx7_dbt:
   outputs:
     dev:
       type: duckdb
-      path: dev.duckdb
+      path: data/dev.duckdb
       threads: 1
       attach:
-        - path: audio.db
+        - path: data/audio.db
           type: sqlite
+      module_paths:
+        - /home/athena/nintorac/s4_dx7/s4_dx7
+      plugins:
+        - module: s4_dx7.udf
   target: dev
