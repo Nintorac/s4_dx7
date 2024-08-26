@@ -51,39 +51,23 @@ class AudioDataModule():
         select notes from "{table}"
         where rowid in (select rowid from batch)
         ''').arrow()
-        # for _ in range(3):
-            # batch_table = pa.Table.from_pydict(batch)
+        
         source_patch, target_patch = AudioDataModule.get_voices()
         signals_source = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=source_patch)
         signals_target = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=target_patch)
-            # try:
-            #     signals_target, signals_source = ray.get([signals_target, signals_source], timeout=128)
-            #     break
-            # except Exception as e:
-            #     ray.kill([signals_target, signals_source])
-            #     continue
-
-
 
         delta_rate = 16-bit_rate
         signals_target = AudioDataModule.clean_signal(signals_target, delta_rate, bit_rate)
         signals_source = AudioDataModule.clean_signal(signals_source, delta_rate, bit_rate)
 
-        # print(max(signals_source.max(), signals_target.max()))
-        # print(min(signals_source.min(), signals_target.min()))
-        
-        return {"x": signals_source, "y": signals_target.unsqueeze(-1)}
-        # return {"x": signals_source[:,:-1], "y": signals_target[:,1:].unsqueeze(-1)}
-        # return {"x": signals_source[:,:-1], "y": signals_source[:,1:].unsqueeze(-1)}
-        # return {"x": batch, "y": batch}
+        return {"x": signals_source[:,:-1], "y": signals_target[:,:-1].unsqueeze(-1)}
 
 
     @staticmethod
     def clean_signal(signals, delta_rate, bit_rate):                
 
         signals = torch.tensor(signals.to_pylist())
-        bit_crushed = (signals+1)//(2**(delta_rate))
-        # bit_crushed = signals
+        bit_crushed = signals//(2**(delta_rate))
         bit_crushed = bit_crushed.clamp(0, 2**bit_rate-1)
         return bit_crushed
 
