@@ -16,7 +16,7 @@ from s4_dx7.lib.s4.generate import load_experiment
 from s4_dx7.lib.visualistaion.audio import create_melspec_figure, waveform_segment_figure, render_piano_roll, render_voice
 import networkx as nx
 from s4_dx7.lib.visualistaion.graph_transform_representation import draw_transform_graph
-from s4_dx7.lib.visualistaion.utils import fig_to_png_data_uri, float_to_ogg_data_uri
+from s4_dx7.lib.visualistaion.utils import fig_to_png_data_uri, float_to_ogg_data_uri, float_to_ogg_file
 
 
 icons = {
@@ -93,11 +93,11 @@ def create_signal_segment_plot(signal, sample_rate, times, title):
 def s4_dx7_vc_fir_00(*args, **kwargs):
     return model(*args, **kwargs)
 audio_f = lambda signal: f"""
- <audio controls>
-  <source src="{float_to_ogg_data_uri(signal.squeeze().numpy(), config.dataset.sr)}" type="audio/ogg">
-  <a href="this tag included as a hack to get pyvis to render html"/>
+<audio controls>
+<source src="{float_to_ogg_data_uri(signal.squeeze().numpy(), config.dataset.sr)}" type="audio/ogg">
 Your browser does not support the audio element.
 </audio> 
+
 """.replace('\n', '') + '\n'
 def html_encode_figure(fig):
     with TemporaryFile('wb+') as f:
@@ -136,7 +136,7 @@ normalize_signal_w_rate = partial(normalize_signal, bit_rate=config.dataset.bit_
 # Creating Mel Spectrogram Plots
 
 # Plot waveform segments
-times = [(0,2),(0,0.2),(0,0.02)]
+times = [(0,2),(0.5,0.7),(0.5,0.52)]
 
 
 # target_te1_signal_plot = create_signal_segment_plot(normalised_target_signal, config.dataset.sr, 0., .2, "Target Signal - 200ms Segment")
@@ -156,4 +156,40 @@ generated_signal_plot = create_signal_segment_plot(generated_signal, config.data
 generated_signal_mel = create_mel_spectrogram_plot(generated_signal, config.dataset.sr, 'Generated Signal Mel Spectrogram')
 generated_audio = audio_f(generated_signal)
 print(generated_audio + html_encode_figure(generated_signal_plot) + html_encode_figure(generated_signal_mel))
+# %%
+thing = {
+    'source': (normalised_source_signal, source_signal_mel, source_signal_plot),
+    'target': (normalised_target_signal, target_signal_mel, target_signal_plot),
+    'generated': (generated_signal, generated_signal_mel, generated_signal_plot),
+}
+
+details_template = """
+#### {summary}
+{details}
+"""
+
+def write_image(fig, name, figtype):
+    filename = f"{name}-{figtype}.png"
+    fig.savefig(f'assets/{filename}')
+    return f"![[{filename}]]\n"
+
+def write_audio(signal, name):
+    return audio_f(signal)
+    filename = f"{name}.ogg"
+    float_to_ogg_file(signal.squeeze().numpy(), config.dataset.sr, f'assets/{filename}')
+    return f"![[{filename}]]\n"
+
+md = ""
+name_prefix = "s4-dx7-vc-fir-02"
+for ftype, (signal, mel, signal_plot) in thing.items():
+    name = f'{name_prefix}-{ftype}'
+    details = f'\n{write_audio(signal, name)}\n'
+    details += f"{write_image(signal_plot, name, 'signal')}"
+    details += f"{write_image(mel, name, 'mel')}"
+
+    md += details_template.format(summary=ftype,
+                                  details=details)
+    md += '\n'
+
+print(md)
 # %%

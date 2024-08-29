@@ -59,3 +59,17 @@ def float_to_ogg_data_uri(x, sample_rate):
 
     # Return the data URI
     return data_uri
+
+def float_to_ogg_file(x, sample_rate, f):
+    """
+    Converts audio data from float values to ogg format.
+    
+    Args:
+        x (np.array): Array of float values representing the audio data.
+        sample_rate (int): The sample rate of the audio data.
+        
+    Returns:
+        str: The data URI representing the ogg audio file.
+    """
+    # Convert float values to audio file in the buffer
+    sf.write(f, x, sample_rate, format='OGG')
