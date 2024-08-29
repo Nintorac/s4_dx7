@@ -15,6 +15,12 @@ cd s4
 python -m train +experiment=audio/sashimi-dx7-vc-fir
 ```
 
+mamba version snowy sponge
+``` bash
+python -m train +experiment=audio/sashimi-dx7-vc-fir model/layer=mamba2 ++dataset.duration=0.5
+```
+
+
 This will begin training though it's not recommended since there a several known bugs. see the blog
 
 ## Blog
