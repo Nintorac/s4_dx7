@@ -88,6 +88,7 @@ layer = {
     "performer":  "src.models.sequence.attention.linear.Performer",
     "lssl":       "src.models.sequence.modules.lssl.LSSL",
     "s4":         "src.models.sequence.modules.s4block.S4Block",
+    "mamba2":     "s4_dx7.lib.layers.mamba2.Mamba2",
     "fftconv":    "src.models.sequence.kernels.fftconv.FFTConv",
     "s4nd":       "src.models.sequence.modules.s4nd.S4ND",
     "mega":       "src.models.sequence.modules.mega.MegaBlock",
