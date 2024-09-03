@@ -10,7 +10,7 @@ import duckdb
 from IPython.core.display import HTML, display
 from matplotlib import pyplot as plt
 import torch
-from s4_dx7.lib.data.audio_data_module import AudioDataModule
+from s4_dx7.lightning.data.single_voice_to_voice import SingleVoice2VoiceDataModule
 from s4_dx7.lib.render import render_batch, to_midi
 from s4_dx7.lib.s4.generate import load_experiment
 from s4_dx7.lib.visualistaion.audio import create_melspec_figure, waveform_segment_figure, render_piano_roll, render_voice
@@ -40,7 +40,7 @@ model, _, config = load_experiment(
         experiment_root=f"{model_path}" 
     )
 model = model.cuda()
-source_patch, target_patch = AudioDataModule.get_voices()
+source_patch, target_patch = SingleVoice2VoiceDataModule.get_voices()
 # %%
 import base64
 from mido import MidiFile, MidiTrack, Message
@@ -80,7 +80,7 @@ def normalize_signal(signal, bit_rate):
 def greedy_decode(signal):
     return signal.argmax(-1)
 def corrupt_signal(signal):
-    return AudioDataModule.clean_signal(signal, 7, 8)
+    return SingleVoice2VoiceDataModule.clean_signal(signal, 7, 8)
     return torch.clamp(signal + int(signal.float().mean()), 0, 2**(8-1))
     # return torch.clamp(signal, 0, 2**8-1)
 # Function to create Mel Spectrogram plot
@@ -114,8 +114,8 @@ ar = query.to_arrow_table()
 
 target_signal = render_voice(ar['notes'], target_patch, config.dataset)
 source_signal = render_voice(ar['notes'], source_patch, config.dataset)
-source_signal = AudioDataModule.clean_signal(source_signal, 8, 8)[..., 1:]
-target_signal = AudioDataModule.clean_signal(target_signal, 8, 8)[..., 1:]
+source_signal = SingleVoice2VoiceDataModule.clean_signal(source_signal, 8, 8)[..., 1:]
+target_signal = SingleVoice2VoiceDataModule.clean_signal(target_signal, 8, 8)[..., 1:]
 
 with torch.no_grad():
     generated_signal_logits = s4_dx7_vc_fir_00((source_signal.cuda(), target_signal.cuda().unsqueeze(-1)))[0]

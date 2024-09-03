@@ -14,13 +14,13 @@ logging.getLogger("ray.data").setLevel(logging.ERROR)
 logging.getLogger("ray.data._internal.execution.streaming_executor").setLevel(logging.ERROR)
 
 # logger.setLevel(logging.ERROR)
-from s4_dx7.lib.data.audio_data_module import AudioDataModule
+from s4_dx7.lightning.data.single_voice_to_voice import SingleVoice2VoiceDataModule
 import ray
 ray.init(log_to_driver=False)
 bit_rate=8
 sr=8000
 sample_size=8
-data_module = AudioDataModule(bit_rate=bit_rate, sr=sr, limit=6400)
+data_module = SingleVoice2VoiceDataModule(bit_rate=bit_rate, sr=sr, limit=6400)
 # Iterate over each batch (assuming a single batch here for simplicity)
 for i in tqdm(count()):
     c=count()

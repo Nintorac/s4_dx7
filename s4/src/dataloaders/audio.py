@@ -1090,9 +1090,9 @@ class DX7Autoregressive(SequenceDataset):
 
     def setup(self):
         
-        from s4_dx7.lib.data.audio_data_module import AudioDataModule
+        from s4_dx7.lightning.data.single_voice_to_voice import SingleVoice2VoiceDataModule
 
-        self.dataset = AudioDataModule(
+        self.dataset = SingleVoice2VoiceDataModule(
 
             bit_rate=self.bits,
             sr=self.sr,

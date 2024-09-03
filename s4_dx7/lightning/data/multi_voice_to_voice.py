@@ -12,7 +12,7 @@ def create_connection():
     # duckdb.execute('install sqlite')
     return duckdb.connect(os.environ['AUDIO_DB'])
 
-class AudioDataModule():
+class MultiVoice2VoiceDataModule():
     def __init__(self, table='melodies', bit_rate=16, sr=44100, duration=2.5, limit=None):
         print(bit_rate, sr, duration)
         self.bit_rate = bit_rate
