@@ -39,6 +39,7 @@ models:
     melodies:
     #   +materialized:`` incremental
       +database: audio
+    # TODO: find a nice way to send some things to different database.
     dx7_voices:
       +database: audio
     dx7_cartridges:

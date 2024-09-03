@@ -1,6 +1,13 @@
+# info from https://homepages.abdn.ac.uk/d.j.benson/pages/dx7/sysex-format.txt
+# this file started as a hack and only got worse from there
+# TODO rewrite with ux in mind
+from itertools import zip_longest
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 import bitstruct
 import mido
+
+from s4_dx7.lib.midi import sysex_bytes
 
 
 def take(take_from, n):
@@ -9,6 +16,7 @@ def take(take_from, n):
 
 N_OSC = 6
 N_VOICES = 32
+N_NAME_CHARS = 10
 
 def checksum(data):
     return (128-sum(data)&127)%128
@@ -330,10 +338,28 @@ class DX7Single():
 
 
     @staticmethod
-    def to_syx(voices):
+    def single_syx_message(voices) -> mido.Message:
+
+        if len(voices)!=1:
+            raise ValueError("only a single voice should be provided")
+        voice = voices[0]
+        voices_bytes = bytes()
+        voices_bytes = DX7Single.struct().pack(dict(zip(DX7Single.keys(), voice)))    
+        
+        patch_checksum = [checksum(voices_bytes)]
+
+        data = bytes(DX7Single.HEADER) \
+            + voices_bytes \
+            + bytes(patch_checksum)
 
 
-        assert len(voices)==1
+        return mido.Message('sysex', data=data)
+        
+    @staticmethod
+    def multi_to_single_syx_message(voices) -> mido.Message:
+
+        if len(voices)!=1:
+            raise ValueError("only a single voice should be provided")
         voice = voices[0]
         voices_bytes = bytes()
         voices_bytes = DX7Single.struct().pack(dict(zip(VOICE_KEYS, voice)))    
@@ -347,6 +373,8 @@ class DX7Single():
 
         return mido.Message('sysex', data=data)
         
+# DX7Single.GENERAL_KEYS=GENERAL_KEYS
+# DX7Single.OSC_KEYS=OSC_KEYS
 
 def consume_syx(path):
 
@@ -394,8 +422,28 @@ def dx7_bulk_pack(voices):
 
     return mido.Message('sysex', data=data)
 
+def clean_voice(voice: bytes, name_str='NINTORAC', pad='_') -> bytes:
+    """
+    Normalises all fields that have no effect on the synthesis
+    TODO: python tests to ensure that the audio signal is the same
+        before and after cleaning
+    """
 
-if __name__=="__main__":
-    print(VOICE_KEYS)
+    if len(name_str) > N_NAME_CHARS:
+        raise ValueError('patch name must be at most 10 chars')
+    voice_sans_header = bytes(voice[6:-2])
+    voice_dict= DX7Single.struct().unpack(voice_sans_header)
+    for i, c in zip_longest(range(N_NAME_CHARS), name_str):
+        c = c or pad
+        voice_dict[f'NAME CHAR {i+1}'] = int.from_bytes(c.encode('ascii'))
 
-    # print(DX7Single.to_syx(n)
+    sysex_bytes_voice = sysex_bytes(DX7Single.single_syx_message([[voice_dict[key] for key in DX7Single.keys()]]))
+        
+    return sysex_bytes_voice
+
+def extract_voices(cart_bytes: bytes):
+    with NamedTemporaryFile('r+b') as f:
+        f.write(cart_bytes)
+        voices = consume_syx(f.name)
+        to_sysex = lambda x: sysex_bytes(DX7Single.multi_to_single_syx_message(x))
+        return [to_sysex([x.values()]) for x in voices if x is not None]

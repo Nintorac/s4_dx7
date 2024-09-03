@@ -11,4 +11,15 @@ s4_dx7_dbt:
         - /home/athena/nintorac/s4_dx7/s4_dx7
       plugins:
         - module: s4_dx7.udf
+    staging:
+      type: duckdb
+      path: data/staging.duckdb
+      threads: 1
+      attach:
+        - path: data/audio.db
+          type: sqlite
+      module_paths:
+        - /home/athena/nintorac/s4_dx7/s4_dx7
+      plugins:
+        - module: s4_dx7.udf
   target: dev
