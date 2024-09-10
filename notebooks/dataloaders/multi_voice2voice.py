@@ -1,9 +1,9 @@
 #%% [markdown]
 # This page is a render of the notebook found at `notebooks/dataloaders/multi_voice2voice.py` in the [source repo](https://github.com/Nintorac/s4_dx7)
-
+# 
 # > [!warning]
 # > **The audio can be quite loud**: Turn down your volume
-
+# 
 # It shows several random examples of data used in the training of [[s4-dx7-vc-fir-03]]
 # %%
 import torch
@@ -38,8 +38,8 @@ for batch in data_module.get_train_dataloader(sample_size):
 
     for i in range(5):
         # Select the i-th sample from both 'x' and 'y' signals in the batch
-        x_signal = batch['x'][i]
-        y_signal = batch['y'][i].squeeze(-1)
+        x_signal = batch['x'][i].cpu()
+        y_signal = batch['y'][i].squeeze(-1).cpu()
         # raise ValueError(y_signal.min(), y_signal.max())
         y_signal = mu_law_decoding(y_signal, bit_rate)
         x_signal = mu_law_decoding(x_signal, bit_rate)
@@ -49,7 +49,7 @@ for batch in data_module.get_train_dataloader(sample_size):
         # print(f"phrase - {batch['phrase_id'][i]}")
         # Plot and display encoding
         print(f"Playing and displaying encoding")
-        plot_melspectrogram_and_play_button(batch['encoding'][i], sr)
+        plot_melspectrogram_and_play_button(batch['encoding'][i].cpu(), sr)
 
         # Plot and display x
         print(f"Playing and displaying x[{i}]")
@@ -94,3 +94,5 @@ for batch in data_module.get_train_dataloader(sample_size):
 
         plt.close("all") # supress inlined plots https://stackoverflow.com/questions/49545003/how-to-suppress-matplotlib-inline-for-a-single-cell-in-jupyter-notebooks-lab
     break
+
+# %%

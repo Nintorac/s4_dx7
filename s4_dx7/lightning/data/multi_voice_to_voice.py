@@ -12,7 +12,7 @@ from s4_dx7.udf import Plugin
 from s4_dx7.utils import get_duckdb_connection
 
 def create_connection():
-    # duckdb.execute('install sqlite')
+    duckdb.execute('install sqlite')
     duck = duckdb.connect(os.environ['AUDIO_DB'])
     Plugin.configure_connection(None, duck)
 
@@ -55,6 +55,7 @@ class MultiVoice2VoiceDataModule():
                 order by rowid {limit_str}
                 ''',
                 create_connection,
+                override_num_blocks=1
             )
             if data_split == DataSplit.TRAIN:
                 ds = ds.random_shuffle()
@@ -65,7 +66,13 @@ class MultiVoice2VoiceDataModule():
                 duration=self.duration,
                 bit_rate=self.bit_rate,
                 baud_rate=self.patch_baud_rate)
-            pipeline = ds.map_batches(f, zero_copy_batch=True, batch_size=5)
+            pipeline = ds.repartition(10).map_batches(
+                f, 
+                zero_copy_batch=True, 
+                batch_size=16, 
+                num_cpus=1,
+                concurrency=1
+            )
             # raise ValueError(pipeline.stats())
             return pipeline
 
@@ -109,9 +116,11 @@ class MultiVoice2VoiceDataModule():
         signals_target = mu_law_encoding(signals_target, bit_rate)
         signals_source = mu_law_encoding(signals_source, bit_rate)
 
+        # raise ValueError(signals_source.shape)
+        # raise ValueError(signals_source.shape, signals_target.shape)
         return {
-            "x": signals_source[:,:-1],
-            "y": signals_target[:,:-1].unsqueeze(-1),
+            "x": signals_source,
+            "y": signals_target,
             "encoding": target_encoding,
             # "source_voice_id": batch_table['source_voice_id'].to_pylist(),
             # "target_voice_id": batch_table['target_voice_id'].to_pylist(),
