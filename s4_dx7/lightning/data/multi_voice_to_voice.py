@@ -1,3 +1,4 @@
+from enum import StrEnum
 from functools import partial
 import os
 import duckdb
@@ -5,77 +6,118 @@ import pyarrow as pa
 import ray
 import numpy as np
 import torch
-
+from torchaudio.functional import mu_law_encoding
 from s4_dx7.lib.render import render_batch
+from s4_dx7.udf import Plugin
+from s4_dx7.utils import get_duckdb_connection
 
 def create_connection():
     # duckdb.execute('install sqlite')
-    return duckdb.connect(os.environ['AUDIO_DB'])
+    duck = duckdb.connect(os.environ['AUDIO_DB'])
+    Plugin.configure_connection(None, duck)
+
+    return duck
+
+class DataSplit(StrEnum):
+    TRAIN = 'train'
+    TEST = 'test'
+    VALIDATE = 'validate'
 
 class MultiVoice2VoiceDataModule():
-    def __init__(self, table='melodies', bit_rate=16, sr=44100, duration=2.5, limit=None):
+    def __init__(self,
+        table='multivoice_dataset',
+        bit_rate=16,
+        sr=44100,
+        duration=2.5,
+        limit=None,
+        patch_baud_rate=300
+
+    ):
         print(bit_rate, sr, duration)
         self.bit_rate = bit_rate
         self.duration = duration
         self.sr = sr
         self.table = table
         self.limit = limit
+        self.patch_baud_rate = patch_baud_rate
         self._tl = None
         self._el = None
         self._tel = None
-    def _dataset(self, dataset_type):
+    def _dataset(self, data_split):
 
             limit_str = '' if self.limit is None else f'limit {self.limit}'
+            data_split = DataSplit(data_split)
             ds = ray.data.read_sql(
-                f'SELECT rowid FROM "{self.table}" order by rowid {limit_str}',
+                f'''
+                SELECT rowid
+                FROM "{self.table}"
+                where data_split='{data_split.value}'
+                order by rowid {limit_str}
+                ''',
                 create_connection,
-                parallelism=1
             )
-            train, test = ds.train_test_split(test_size=0.2)
-            test, validate = test.train_test_split(test_size=0.5)
-            f = partial(self.f, table=self.table, sr=self.sr, duration=self.duration, bit_rate=self.bit_rate)
-            pipeline = lambda dataset: dataset.repartition(200).map_batches(f, zero_copy_batch=True, batch_size=128)
-            if dataset_type=='train':
-                return pipeline(train)
-            elif dataset_type=='test':
-                return pipeline(test)
-            else: 
-                return pipeline(validate)
+            if data_split == DataSplit.TRAIN:
+                ds = ds.random_shuffle()
+
+            f = partial(self.f,
+                table=self.table,
+                sr=self.sr,
+                duration=self.duration,
+                bit_rate=self.bit_rate,
+                baud_rate=self.patch_baud_rate)
+            pipeline = ds.map_batches(f, zero_copy_batch=True, batch_size=5)
+            # raise ValueError(pipeline.stats())
+            return pipeline
 
         # self._dataset = dataset
     @staticmethod
-    def f(batch, table, sr, duration, bit_rate):
+    def f(batch, table, sr, duration, bit_rate, baud_rate):
 
         conn = create_connection()
         batch_table = conn.execute(f'''
-        select notes from "{table}"
-        where rowid in (select rowid from batch)
+            with batch_data as (
+                select * from "{table}"
+                where rowid in (select rowid from batch)
+            )
+            select
+                source_voice_id
+                , target_voice_id
+                , phrase_id
+                , render_dx7(
+                    midi_notes
+                    , source_voice_bytes
+                    , {sr}
+                    , {duration}
+                ) source_voice ,
+                render_dx7(
+                    midi_notes
+                    , target_voice_bytes
+                    , {sr}
+                    , {duration}
+                ) target_voice ,
+                fsk_encode_syx(target_voice_bytes, {sr}, {baud_rate}) target_encoding
+            from batch_data
         ''').arrow()
         
-        source_patch, target_patch = AudioDataModule.get_voices()
-        signals_source = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=source_patch)
-        signals_target = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=target_patch)
+        target_encoding = torch.tensor(batch_table['target_encoding'].to_pylist())
+        source_voice = torch.tensor(batch_table['source_voice'].to_pylist())
+        target_voice = torch.tensor(batch_table['target_voice'].to_pylist())
 
-        delta_rate = 16-bit_rate
-        signals_target = AudioDataModule.clean_signal(signals_target, delta_rate, bit_rate)
-        signals_source = AudioDataModule.clean_signal(signals_source, delta_rate, bit_rate)
+        signals_source = torch.cat([target_encoding, source_voice], dim=-1)
+        signals_target = torch.cat([torch.zeros_like(target_encoding), target_voice], dim=-1)
 
-        return {"x": signals_source[:,:-1], "y": signals_target[:,:-1].unsqueeze(-1)}
+        signals_target = mu_law_encoding(signals_target, bit_rate)
+        signals_source = mu_law_encoding(signals_source, bit_rate)
 
+        return {
+            "x": signals_source[:,:-1],
+            "y": signals_target[:,:-1].unsqueeze(-1),
+            "encoding": target_encoding,
+            # "source_voice_id": batch_table['source_voice_id'].to_pylist(),
+            # "target_voice_id": batch_table['target_voice_id'].to_pylist(),
+            # "phrase_id": batch_table['phrase_id'].to_pylist(),
+        }
 
-    @staticmethod
-    def clean_signal(signals, delta_rate, bit_rate):                
-
-        signals = torch.tensor(signals.to_pylist())
-        bit_crushed = signals//(2**(delta_rate))
-        bit_crushed = bit_crushed.clamp(0, 2**bit_rate-1)
-        return bit_crushed
-
-    @staticmethod
-    def get_voices():
-        target_patch, = create_connection().execute("select bytes from dx7_voices where path like '%SynprezFM_02%' and index=0").df().bytes
-        source_patch, = create_connection().execute("select bytes from dx7_voices where path like '%siine%' and index=0").df().bytes
-        return source_patch, target_patch
 
     def get_train_dataloader(self, batch_size):
         if self._tl is None:

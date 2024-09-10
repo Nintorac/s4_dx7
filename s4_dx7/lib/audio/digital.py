@@ -25,7 +25,7 @@ def fsk_encode_bytes_batch(
     # tones representing bits, dummy data (0,1)
     arrs = []
     for item in encode_bytes:
-        bits = bitarray()
+        bits = bitarray(endian='big')
         bits.frombytes(item)
         bits_in_tones = [codebook[int(bit)] for bit in bits]
         arrs.append(torch.tensor(bits_in_tones))
@@ -43,7 +43,7 @@ def fsk_encode_syx(
     syx: List[bytearray],
     sampling_rate=44100,
     baud_rate=300
-):
+) -> torch.Tensor:
     """
     Encodes a syx message into an FSK signal
     adds some padding and a fade out to the end to avoid signal discontinuities

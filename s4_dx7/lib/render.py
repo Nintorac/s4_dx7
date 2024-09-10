@@ -1,3 +1,4 @@
+import numpy as np
 from functools import partial
 import io
 from itertools import chain
@@ -8,8 +9,8 @@ from tempfile import NamedTemporaryFile
 from typing import List, Optional
 
 from mido import Message
-import numpy
 from pedalboard import load_plugin
+from s4_dx7.lib.audio import float_to_pcm16
 from torchaudio.transforms import Resample
 from librosa import resample
 from tqdm import tqdm
@@ -23,13 +24,6 @@ from s4_dx7.lib.dx7 import DX7Single, consume_syx, dx7_bulk_pack
 
 RENDER_SAMPLE_RATE = 44100
 
-def float_to_pcm16(audio, bit_rate=16):
-
-    ints = ((audio + 1) * (2**(bit_rate-1))).astype(numpy.int32)
-
-    return ints
-
-
 def to_midi(notes: List[dict], transpose:int=0, bpm:int=120)->List[Message]:    
 	# the note's are represented as start_time, duration. 
     # But MIDI needs note_on, note_off tuples, 
@@ -42,7 +36,15 @@ def to_midi(notes: List[dict], transpose:int=0, bpm:int=120)->List[Message]:
              ) for note in notes]))
 
 # @ray.remote(num_cpus=1, memory=500 * 1024 * 1024) #5mb
-def render_batch(notes: List[List[dict]], sr: int, duration: float, voice:Optional[bytes]=None, plugin: bytes=None, bpm: int=120)->pa.array:
+def render_batch(
+        notes: List[List[dict]],
+        sr: int,
+        duration: float,
+        voice:Optional[bytes]=None,
+        plugin: bytes=None,
+        bpm: int=120,
+        pcm_encode: bool = True
+    )->pa.array:
     chunk = notes.to_pandas()
     # Load a VST3 or Audio Unit plugin from a known path on disk:
     if plugin:
@@ -54,6 +56,7 @@ def render_batch(notes: List[List[dict]], sr: int, duration: float, voice:Option
         instrument = load_plugin(os.environ['DEFAULT_INSTRUMENT_PATH'])
     syx = []
     if voice:
+        # TODO: is this neccesary? could use mido.Message.from_bytes?
         with NamedTemporaryFile('r+b') as f:
             f.write(voice)
             f.flush()
@@ -71,28 +74,30 @@ def render_batch(notes: List[List[dict]], sr: int, duration: float, voice:Option
 
     to_midi_f = partial(to_midi, bpm=bpm)
     for notes in map(to_midi_f, chunk):
-        import time
-        from datetime import datetime
-        import logging
-        logger=logging.getLogger('lol')
-        logger.setLevel(logging.INFO)
-        st = time.time()
-        print(f'starting... {datetime.now()})')
-
+        # raise ValueError(notes)
+        # synthesize then resample, the synthesis changes dramatically at different sample rates
+        # TODO: use this as another dimension of variance in a dataset
         x = instrument(
             notes,
             duration=duration, # seconds
             sample_rate=RENDER_SAMPLE_RATE,
         )
-        print(time.time()-st)
         x = resample(x, orig_sr=RENDER_SAMPLE_RATE, target_sr=sr)
-        samples.append(float_to_pcm16(x.mean(0)))
-        # t.update(1)
+        # TODO: handle multi channel audio
+        render = x[0]
+        if pcm_encode:
+            samples.append(float_to_pcm16(render))
+            continue
+
+        samples.append(render)
 
     del instrument
     import gc
     gc.collect()
 
     # 1/0
-    return pa.array(samples)
+    result = pa.array(samples)
+    # raise ValueError(result[0], samples[0].min(), samples[0].max())
+    return result
+
 
