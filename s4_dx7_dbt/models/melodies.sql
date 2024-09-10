@@ -1,5 +1,7 @@
 select 
-    distinct to_json(list({
+    distinct
+    phrase_id
+    , to_json(list({
             'start_time': e.start_time-floor(e.start_time/4)*4,
             'note': e.note,
             'duration': e.duration,
