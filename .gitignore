@@ -36,3 +36,4 @@ experiments/
 .obsidian/
 
 *.ipynb
+/ray/

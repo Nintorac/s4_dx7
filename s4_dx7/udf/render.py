@@ -49,3 +49,22 @@ def render_dx7_udf(
     # return pa.array(ray.get(promises))
     results = ray.get(promises)
     return pa.concat_arrays(results)
+
+
+# def render_dx7_udf(
+#         notes: VARCHAR,
+#         voice: BLOB,
+#         sr: INTEGER,
+#         duration: FLOAT
+#     )->AUDIO_TYPE:
+#     """
+#     probably not super performant at scale but good enough for training
+#     """
+#     results = []
+#     a = lambda x: pyarrow.array([x])
+#     for n, v, s, d in zip(notes, voice, sr, duration):
+#         promise = render_batch(a(n), s.as_py(), d.as_py(), v.as_py(), pcm_encode=False)
+#         results.append(promise)
+
+#     # return pa.array(ray.get(promises))
+#     return pa.concat_arrays(results)

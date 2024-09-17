@@ -25,7 +25,7 @@ from s4_dx7.notebook.mel_spec_audio import plot_melspectrogram_and_play_button
 bit_rate=8
 sr=40000
 baud=8000
-sample_size=15
+sample_size=100
 
 dt = int(1/baud*sr)  # samples per bit
 encoding_duration = (dt*8*155)/sr
@@ -33,7 +33,10 @@ encoding_samples = dt*8*155
 
 data_module = MultiVoice2VoiceDataModule(bit_rate=bit_rate, limit=sample_size, sr=sr, patch_baud_rate=baud)
 # Iterate over each batch (assuming a single batch here for simplicity)
-for batch in data_module.get_train_dataloader(sample_size):
+loader = data_module.get_train_dataloader(sample_size)
+
+#%%
+for batch in loader:
     batch_size = batch['x'].shape[0]
 
     for i in range(5):
@@ -95,4 +98,22 @@ for batch in data_module.get_train_dataloader(sample_size):
         plt.close("all") # supress inlined plots https://stackoverflow.com/questions/49545003/how-to-suppress-matplotlib-inline-for-a-single-cell-in-jupyter-notebooks-lab
     break
 
+# %%
+for i in loader:
+    pass
+# %%
+print(loader.stats())
+# %%
+pipeline = data_module._dataset('train')
+# %%
+dir(pipeline)
+# %%
+pipeline.take_batch()
+# %%
+print(pipeline.stats())
+# %%
+for i in pipeline.iter_torch_batches(batch_size=14):
+    pass
+# %%
+print(pipeline.stats())
 # %%
