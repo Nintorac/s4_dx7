@@ -41,5 +41,7 @@ models:
       +database: audio
     dx7_voices:
       +database: audio
+    multivoice_dataset:
+      +database: audio
     dx7_cartridges:
       +database: audio

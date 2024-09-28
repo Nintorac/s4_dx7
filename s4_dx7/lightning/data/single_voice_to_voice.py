@@ -12,7 +12,7 @@ def create_connection():
     # duckdb.execute('install sqlite')
     return duckdb.connect(os.environ['AUDIO_DB'])
 
-class AudioDataModule():
+class SingleVoice2VoiceDataModule():
     def __init__(self, table='melodies', bit_rate=16, sr=44100, duration=2.5, limit=None):
         print(bit_rate, sr, duration)
         self.bit_rate = bit_rate
@@ -52,13 +52,13 @@ class AudioDataModule():
         where rowid in (select rowid from batch)
         ''').arrow()
         
-        source_patch, target_patch = AudioDataModule.get_voices()
+        source_patch, target_patch = SingleVoice2VoiceDataModule.get_voices()
         signals_source = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=source_patch)
         signals_target = render_batch(batch_table['notes'], sr, duration + 1/sr, voice=target_patch)
 
         delta_rate = 16-bit_rate
-        signals_target = AudioDataModule.clean_signal(signals_target, delta_rate, bit_rate)
-        signals_source = AudioDataModule.clean_signal(signals_source, delta_rate, bit_rate)
+        signals_target = SingleVoice2VoiceDataModule.clean_signal(signals_target, delta_rate, bit_rate)
+        signals_source = SingleVoice2VoiceDataModule.clean_signal(signals_source, delta_rate, bit_rate)
 
         return {"x": signals_source[:,:-1], "y": signals_target[:,:-1].unsqueeze(-1)}
 

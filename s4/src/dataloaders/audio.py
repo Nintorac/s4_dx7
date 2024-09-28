@@ -3,6 +3,7 @@
 import os
 from os import listdir
 from os.path import join
+import hydra
 
 import torch
 import torchaudio
@@ -1090,22 +1091,7 @@ class DX7Autoregressive(SequenceDataset):
 
     def setup(self):
         
-        from s4_dx7.lib.data.audio_data_module import AudioDataModule
-
-        self.dataset = AudioDataModule(
-
-            bit_rate=self.bits,
-            sr=self.sr,
-            duration=self.duration,
-            limit=self.limit
-            # path=self.data_dir,
-            # bits=self.bits,
-            # split='train',
-            # quantization=self.quantization,
-            # dequantize=self.dequantize,
-            # pad_len=self.pad_len,
-        )
-
+        self.dataset = hydra.utils.instantiate(self.data_module)
         self.sample_len = int(self.duration*self.sr)
     def train_dataloader(self, **kwargs):
         return self.dataset.get_train_dataloader(kwargs["batch_size"])

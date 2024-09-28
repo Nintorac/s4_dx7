@@ -22,19 +22,13 @@ class Mamba2(nn.Module):
     def __init__(
         self,
         d_model,
-        d_state=64,
-        headdim=8,
-        A_init_range=(1.,1.1),
         **kwargs
     ):
         super().__init__()
-
         self.layer = Mamba(
             # This module uses roughly 3 * expand * d_model^2 parameters
             d_model=d_model, # Model dimension d_model
-            d_state=d_state,  # SSM state expansion factor
-            A_init_range=A_init_range,
-            headdim=headdim # https://github.com/state-spaces/mamba/issues/351#issuecomment-2167091940
+            **kwargs
             # expand=6,
         ).to("cuda")
 

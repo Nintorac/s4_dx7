@@ -1,0 +1,6 @@
+version: 2
+
+models:
+- name: metadata_dx7_voices
+  config:
+    materialized: view

@@ -42,6 +42,8 @@ trainer:
   accumulate_grad_batches: 2
 
 dataset:
-  sr: 8000
-  duration: 2.5
-  bit_rate: 8
+  data_module:
+    _target_: SingleVoice2VoiceDataModule
+    sr: 8000
+    duration: 2.5
+    bit_rate: 8

@@ -1,0 +1,86 @@
+# @package _global_
+defaults:
+  - /trainer: default
+  - /loader: default
+  - /dataset: dx7
+  - /task: multiclass_classification
+  - /optimizer: adamw
+  - /scheduler: plateau
+  - /model: sashimi
+  - override /model/layer: mamba2
+model:
+  n_layers: 8
+  dropout: 0.0
+  d_model: 128
+  layer:
+    # nheads = (self.expand * self.d_model) // self.headdim
+    # = 128*2//(16)
+    # = 16
+    # note nheads must divide 8
+    # and nheads//8 more than 1 (i think there is a squeeze bug somewhere)
+    d_state: 128
+    d_conv: 4
+    conv_init: null
+    expand: 2
+    headdim: 16
+    d_ssm: null  # If not None, we only apply SSM on this many dimensions, the rest uses gated MLP
+    ngroups: 1
+    A_init_range:
+      - 1.
+      - 1.1
+    D_has_hdim: false
+    rmsnorm: true
+    norm_before_gate: false
+    dt_min: 0.001
+    dt_max: 0.1
+    dt_init_floor: 1e-4
+    dt_limit: 
+      - 0.0
+      - .inf
+    bias: false
+    conv_bias: true
+    # Fused kernel and sharding options
+    # chunk_size: 256
+    # use_mem_eff_path: True
+    # process_group: None
+    # sequence_parallel: True
+    # device: None
+    # dtype: None
+
+train:
+  monitor: val/loss
+  mode: min
+
+task:
+  metrics:
+    - bpb
+    - accuracy
+    - accuracy@3
+    - accuracy@5
+    - accuracy@10
+
+encoder: embedding
+
+decoder:
+  _name_: sequence
+  mode: last
+
+loader:
+  batch_size: 2
+
+trainer:
+  max_epochs: 1000
+  limit_train_batches: 1000
+  limit_val_batches: 100
+  accumulate_grad_batches: 2
+
+dataset:
+  sr: 40000
+  duration: 2.164 # TODO: hack, duration control should account for encoding
+  data_module:
+    _target_: s4_dx7.lightning.data.multi_voice_to_voice.MultiVoice2VoiceDataModule
+    sr: 40000
+    duration: 2
+    bit_rate: 10
+    patch_baud_rate: 8000
+    limit: 1000
